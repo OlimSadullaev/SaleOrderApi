@@ -9,9 +9,14 @@ public class CorrelationIdMiddleware
 
     private const string _correlationIdHeader = "X-Correlation-Id";
 
+    public CorrelationIdMiddleware(RequestDelegate next) => _next = next;
+
     public async Task Invoke(HttpContext context, ICorrelationIdGenerator correlationIdGenerator)
     {
         var correlationId = GetCorrelationIdTrace(context, correlationIdGenerator);
+        AddCorrelationIdToResponse(context, correlationId);
+
+        await _next(context);
     }
 
     private static string GetCorrelationIdTrace(HttpContext context, ICorrelationIdGenerator correlationIdGenerator)
@@ -20,18 +25,18 @@ public class CorrelationIdMiddleware
         {
             correlationIdGenerator.Set(correlationId);
             return correlationId;
-        }   
+        }
         else
         {
             return correlationIdGenerator.Get();
         }
+    }
 
-        private static void AddCorrelationIdToResponse(HttpContext context, string correlationId)
-        {
-            context.Response.OnStarting(() => {
-                context.Response.Headers.Add(_correlationIdHeader, new [] {correlationId});
-                return Task.CompletedTask;
-            });
-        }
+    private static void AddCorrelationIdToResponse(HttpContext context, string correlationId)
+    {
+        context.Response.OnStarting(() => {
+            context.Response.Headers.Add(_correlationIdHeader, new[] { correlationId });
+            return Task.CompletedTask;
+        });
     }
 }
